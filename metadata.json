@@ -1,0 +1,8 @@
+{
+  "name": "Remix FRAUDSHIELD AI",
+  "description": "Next-Generation Real-Time Payment Fraud Intelligence Platform with behavioral DNA, network fingerprinting, and explainable AI scoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

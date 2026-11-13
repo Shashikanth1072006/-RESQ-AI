@@ -1,0 +1,238 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened reusable primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidRole(role) {
+      return role is string && role in [
+        'LEAD_FRAUD_ARCHITECT',
+        'SENIOR_RISK_ANALYST',
+        'COMPLIANCE_OFFICER',
+        'AUDITOR'
+      ];
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+        'uid',
+        'email',
+        'displayName',
+        'preferredRole',
+        'createdAt',
+        'lastLoginAt'
+      ])
+      && data.keys().hasOnly([
+        'uid',
+        'email',
+        'displayName',
+        'photoURL',
+        'preferredRole',
+        'createdAt',
+        'lastLoginAt'
+      ])
+      && isValidId(data.uid)
+      && data.uid == request.auth.uid
+      && data.email is string
+      && data.email.size() >= 3
+      && data.email.size() <= 254
+      && data.displayName is string
+      && data.displayName.size() >= 1
+      && data.displayName.size() <= 120
+      && (!data.keys().hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 512))
+      && isValidRole(data.preferredRole)
+      && data.createdAt is timestamp
+      && data.lastLoginAt is timestamp;
+    }
+
+    function isValidPaymentRecord(data) {
+      return data.keys().hasAll([
+        'ownerUid',
+        'transactionId',
+        'customerId',
+        'customerName',
+        'amount',
+        'paymentMethod',
+        'merchantName',
+        'city',
+        'country',
+        'riskScore',
+        'riskLevel',
+        'decision',
+        'status',
+        'summary',
+        'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'ownerUid',
+        'transactionId',
+        'customerId',
+        'customerName',
+        'amount',
+        'paymentMethod',
+        'merchantName',
+        'city',
+        'country',
+        'riskScore',
+        'riskLevel',
+        'decision',
+        'status',
+        'summary',
+        'createdAt'
+      ])
+      && isValidId(data.ownerUid)
+      && data.ownerUid == request.auth.uid
+      && isValidId(data.transactionId)
+      && data.customerId is string && data.customerId.size() >= 2 && data.customerId.size() <= 64
+      && data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120
+      && data.amount is number && data.amount > 0 && data.amount <= 100000000
+      && data.paymentMethod in ['UPI', 'CREDIT_CARD', 'DEBIT_CARD', 'NET_BANKING', 'CRYPTO', 'DIGITAL_WALLET']
+      && data.merchantName is string && data.merchantName.size() >= 1 && data.merchantName.size() <= 160
+      && data.city is string && data.city.size() >= 1 && data.city.size() <= 100
+      && data.country is string && data.country.size() >= 1 && data.country.size() <= 100
+      && data.riskScore is number && data.riskScore >= 0 && data.riskScore <= 100
+      && data.riskLevel in ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+      && data.decision in ['APPROVE', 'VERIFY_OTP', 'HOLD_REVIEW', 'BLOCK']
+      && data.status in ['APPROVED', 'OTP_PENDING', 'HELD_FOR_REVIEW', 'BLOCKED', 'MANUALLY_RELEASED', 'MANUALLY_BLOCKED']
+      && data.summary is string && data.summary.size() <= 500
+      && data.createdAt is timestamp;
+    }
+
+    function isValidFraudWarning(data) {
+      return data.keys().hasAll([
+        'ownerUid',
+        'warningId',
+        'transactionId',
+        'customerId',
+        'customerName',
+        'channel',
+        'severity',
+        'subject',
+        'message',
+        'operatorName',
+        'operatorRole',
+        'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'ownerUid',
+        'warningId',
+        'transactionId',
+        'customerId',
+        'customerName',
+        'channel',
+        'severity',
+        'subject',
+        'message',
+        'operatorName',
+        'operatorRole',
+        'createdAt'
+      ])
+      && isValidId(data.ownerUid)
+      && data.ownerUid == request.auth.uid
+      && isValidId(data.warningId)
+      && data.transactionId is string && data.transactionId.size() >= 4 && data.transactionId.size() <= 64
+      && data.customerId is string && data.customerId.size() >= 2 && data.customerId.size() <= 64
+      && data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120
+      && data.channel in ['SMS_PUSH', 'EMAIL_ALERT', 'IN_APP_LOCK']
+      && data.severity in ['MEDIUM', 'HIGH', 'CRITICAL']
+      && data.subject is string && data.subject.size() >= 3 && data.subject.size() <= 200
+      && data.message is string && data.message.size() >= 5 && data.message.size() <= 1500
+      && data.operatorName is string && data.operatorName.size() >= 1 && data.operatorName.size() <= 120
+      && data.operatorRole in ['LEAD_FRAUD_ARCHITECT', 'SENIOR_RISK_ANALYST']
+      && data.createdAt is timestamp;
+    }
+
+    // Owner-isolated user profiles
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isEmailVerified()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().lastLoginAt == request.time;
+
+      allow update: if isEmailVerified()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().lastLoginAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'photoURL',
+          'preferredRole',
+          'lastLoginAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // Owner-scoped payment telemetry records
+    match /payments/{paymentId} {
+      allow get: if isSignedIn() && isValidId(paymentId) && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      allow create: if isEmailVerified()
+        && isValidId(paymentId)
+        && isValidPaymentRecord(incoming())
+        && incoming().createdAt == request.time;
+
+      allow update: if isEmailVerified()
+        && isValidId(paymentId)
+        && existing().ownerUid == request.auth.uid
+        && isValidPaymentRecord(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().transactionId == existing().transactionId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+
+      allow delete: if false;
+    }
+
+    // Owner-scoped fraud warning dispatch records
+    match /fraudWarnings/{warningId} {
+      allow get: if isSignedIn() && isValidId(warningId) && existing().ownerUid == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      allow create: if isEmailVerified()
+        && isValidId(warningId)
+        && isValidFraudWarning(incoming())
+        && incoming().createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+  }
+}

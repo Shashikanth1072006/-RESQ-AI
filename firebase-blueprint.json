@@ -1,0 +1,274 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated FraudShield AI analyst profile and workspace preferences.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth user UID matching the document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified operator email address.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Operator display name for audit attribution.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile avatar URL.",
+          "maxLength": 512
+        },
+        "preferredRole": {
+          "type": "string",
+          "description": "Active RBAC workspace role.",
+          "enum": [
+            "LEAD_FRAUD_ARCHITECT",
+            "SENIOR_RISK_ANALYST",
+            "COMPLIANCE_OFFICER",
+            "AUDITOR"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created."
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of most recent sign-in."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "displayName",
+        "preferredRole",
+        "createdAt",
+        "lastLoginAt"
+      ]
+    },
+    "PaymentTransactionRecord": {
+      "title": "PaymentTransactionRecord",
+      "description": "Persisted checkout payment evaluated by the backend FraudShield engine.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "Authenticated session UID that submitted the payment.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "Unique transaction identifier.",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Customer profile identifier.",
+          "minLength": 2,
+          "maxLength": 64
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Customer display name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "amount": {
+          "type": "number",
+          "description": "Payment amount in INR."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": [
+            "UPI",
+            "CREDIT_CARD",
+            "DEBIT_CARD",
+            "NET_BANKING",
+            "CRYPTO",
+            "DIGITAL_WALLET"
+          ]
+        },
+        "merchantName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "country": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "riskScore": {
+          "type": "number",
+          "description": "Deterministic risk score 0-100."
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+        },
+        "decision": {
+          "type": "string",
+          "enum": ["APPROVE", "VERIFY_OTP", "HOLD_REVIEW", "BLOCK"]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "OTP_PENDING",
+            "HELD_FOR_REVIEW",
+            "BLOCKED",
+            "MANUALLY_RELEASED",
+            "MANUALLY_BLOCKED"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerUid",
+        "transactionId",
+        "customerId",
+        "customerName",
+        "amount",
+        "paymentMethod",
+        "merchantName",
+        "city",
+        "country",
+        "riskScore",
+        "riskLevel",
+        "decision",
+        "status",
+        "summary",
+        "createdAt"
+      ]
+    },
+    "FraudWarningRecord": {
+      "title": "FraudWarningRecord",
+      "description": "Warning message dispatched to a customer when fraudulent activity is detected.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "warningId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "transactionId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["SMS_PUSH", "EMAIL_ALERT", "IN_APP_LOCK"]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["MEDIUM", "HIGH", "CRITICAL"]
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1500
+        },
+        "operatorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "operatorRole": {
+          "type": "string",
+          "enum": ["LEAD_FRAUD_ARCHITECT", "SENIOR_RISK_ANALYST"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerUid",
+        "warningId",
+        "transactionId",
+        "customerId",
+        "customerName",
+        "channel",
+        "severity",
+        "subject",
+        "message",
+        "operatorName",
+        "operatorRole",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Private operator profile and workspace RBAC preferences scoped strictly to the owning authenticated user."
+    },
+    "/payments/{paymentId}": {
+      "schema": {
+        "$ref": "#/entities/PaymentTransactionRecord"
+      },
+      "description": "Real payment submissions evaluated by the backend fraud engine and scoped to the creating operator."
+    },
+    "/fraudWarnings/{warningId}": {
+      "schema": {
+        "$ref": "#/entities/FraudWarningRecord"
+      },
+      "description": "Customer fraud warning alerts dispatched by eligible analysts/architects."
+    }
+  }
+}
